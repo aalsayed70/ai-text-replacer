@@ -1,0 +1,45 @@
+{
+  "name": "ai-text-replacer",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron . --enable-logging --no-sandbox --disable-gpu",
+    "build": "electron-builder"
+  },
+  "keywords": [],
+  "author": "Ahmed Mousa",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "AI-powered text replacement Electron app",
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^25.1.8",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "@electron/remote": "^2.1.2"
+  },
+  "build": {
+    "appId": "com.ahmedmousa.aitextreplacer",
+    "productName": "AI Text Replacer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png"
+    }
+  }
+}
