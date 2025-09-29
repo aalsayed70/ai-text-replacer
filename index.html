@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Gemini API Client</title>
+  <style>
+    :root {
+      --bg-color: rgba(32, 33, 36, 0.75);
+      --input-bg: rgba(255, 255, 255, 0.12);
+      --input-focus-bg: rgba(255, 255, 255, 0.15);
+      --input-color: #ffffff;
+      --button-bg: rgba(64, 156, 255, 0.9);
+      --button-hover-bg: rgba(64, 156, 255, 1);
+      --border-color: rgba(255, 255, 255, 0.15);
+      --expanded-width: 400px; /* fixed width */
+      --collapsed-size: 50px;
+      transition: all 0.3s ease;
+    }
+    
+    [data-theme="light"] {
+      --bg-color: rgba(255, 255, 255, 0.75);
+      --input-bg: rgba(0, 0, 0, 0.08);
+      --input-focus-bg: rgba(0, 0, 0, 0.12);
+      --input-color: #000000;
+      --button-bg: rgba(0, 122, 255, 0.9);
+      --button-hover-bg: rgba(0, 122, 255, 1);
+      --border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+    }
+    
+    /* Base container styling */
+    #app-container {
+      width: var(--collapsed-size);
+      height: var(--collapsed-size);
+      background: var(--bg-color);
+      backdrop-filter: blur(100px) saturate(180%);
+      -webkit-backdrop-filter: blur(100px) saturate(180%);
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      border: 1px solid var(--border-color);
+      margin: 0 auto;
+      position: relative;
+      user-select: none;
+      /* In expanded mode we use the standard drag region */
+      -webkit-app-region: drag;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: calc(100vw - 100px);
+      pointer-events: auto;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    #app-container.expanded {
+      width: var(--expanded-width);
+      height: 80px;
+      cursor: default;
+      -webkit-app-region: drag;
+      padding: 0 20px;
+      border-radius: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+    .input-group {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-right: 0;
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    }
+    #app-container.expanded .input-group {
+      opacity: 1;
+      transform: translateX(0);
+      transition-delay: 0.2s;
+      visibility: visible;
+    }
+    #promptBox {
+      flex-grow: 1;
+      margin-right: 20px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 25px;
+      background: var(--input-bg);
+      color: var(--input-color);
+      font-size: 14px;
+      transition: all 0.3s ease;
+      -webkit-app-region: no-drag;
+      min-width: 100px;
+      max-width: calc(100vw - 300px);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      pointer-events: auto;
+    }
+    #promptBox::placeholder {
+      color: var(--input-color);
+      opacity: 0.6;
+    }
+    #promptBox:focus {
+      outline: none;
+      background: var(--input-focus-bg);
+      box-shadow: 0 0 0 2px var(--border-color);
+    }
+    .button-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 90px;
+      position: relative;
+    }
+    #submitBtn {
+      padding: 12px 24px;
+      border: none;
+      background-color: var(--button-bg);
+      color: white;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      -webkit-app-region: no-drag;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(64,156,255,0.3);
+      letter-spacing: 0.3px;
+    }
+    #submitBtn:hover {
+      background-color: var(--button-hover-bg);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(64,156,255,0.4);
+    }
+    #submitBtn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+    }
+    .loader {
+      display: none;
+      width: 40px;
+      height: 40px;
+      position: absolute;
+      left: 65%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .loader::after {
+      content: '';
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      animation: spin 0.8s ease-in-out infinite;
+      box-sizing: border-box;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #submitBtn.loading {
+      background-color: rgba(0,123,255,0.5);
+      cursor: not-allowed;
+    }
+    .theme-toggle {
+      margin-left: 10px;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--input-color);
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      transition: transform 0.3s ease, opacity 0.3s ease, color 0.3s ease, background-color 0.3s ease;
+      outline: none;
+      background: transparent;
+    }
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+    .theme-toggle.switching {
+      transform: rotate(180deg);
+    }
+    .loading-overlay {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.2);
+      backdrop-filter: blur(4px);
+      border-radius: 40px;
+      z-index: 10;
+    }
+    .ai-icon {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--input-color);
+      width: 24px;
+      height: 24px;
+      transition: opacity 0.3s ease;
+      pointer-events: auto;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z' /%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    #app-container.expanded .ai-icon {
+      opacity: 0;
+    }
+    .loading .theme-toggle {
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* Add transition to elements that use theme variables */
+    #app-container,
+    #promptBox,
+    .theme-toggle,
+    .ai-icon,
+    .loader::after {
+      transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <div class="loading-overlay"></div>
+    <div class="input-group">
+      <input id="promptBox" type="text" placeholder="Enter your prompt...">
+      <div class="button-container">
+        <button id="submitBtn">Process</button>
+        <button class="theme-toggle" id="themeToggle">🌙</button>
+        <div class="loader"></div>
+      </div>
+    </div>
+    <div class="ai-icon"></div>
+  </div>
+
+  <script>
+    let collapseTimeout;
+    const COLLAPSE_DELAY = 3000;
+
+    const appContainer = document.getElementById('app-container');
+    const promptBox = document.getElementById('promptBox');
+    let themeToggleClicked = false;
+
+    // Custom dragging variables for collapsed mode
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    // When collapsed, implement custom dragging
+    appContainer.addEventListener('mousedown', (e) => {
+      // Only start custom drag if not expanded
+      if (!appContainer.classList.contains('expanded')) {
+        isDragging = true;
+        dragStartX = e.screenX;
+        dragStartY = e.screenY;
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging && !appContainer.classList.contains('expanded')) {
+        const deltaX = e.screenX - dragStartX;
+        const deltaY = e.screenY - dragStartY;
+        dragStartX = e.screenX;
+        dragStartY = e.screenY;
+        // Use the custom API to move the window
+        if (window.api && window.api.moveWindow) {
+          window.api.moveWindow(deltaX, deltaY);
+        }
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    function collapseApp() {
+      if (themeToggleClicked) {
+        themeToggleClicked = false;
+        return;
+      }
+      if (promptBox.value.trim() !== '') return;
+      appContainer.style.width = "";
+      appContainer.classList.remove('expanded');
+      promptBox.blur();
+      promptBox.value = '';
+      selectedCode = '';
+    }
+
+    function resetCollapseTimer() {
+      clearTimeout(collapseTimeout);
+      if (appContainer.classList.contains('expanded')) {
+        collapseTimeout = setTimeout(collapseApp, COLLAPSE_DELAY);
+      }
+    }
+
+    window.addEventListener('blur', () => {
+      if (promptBox.value.trim() === '') {
+        collapseTimeout = setTimeout(collapseApp, COLLAPSE_DELAY);
+      }
+    });
+
+    promptBox.addEventListener('blur', () => {
+      if (promptBox.value.trim() === '') {
+        collapseTimeout = setTimeout(collapseApp, COLLAPSE_DELAY);
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      const rect = appContainer.getBoundingClientRect();
+      const isOverApp = e.clientX >= rect.left && e.clientX <= rect.right &&
+                        e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (!isOverApp && appContainer.classList.contains('expanded')) {
+        if (promptBox.value.trim() === '') resetCollapseTimer();
+      } else {
+        clearTimeout(collapseTimeout);
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!appContainer.contains(e.target) && appContainer.classList.contains('expanded')) {
+        if (promptBox.value.trim() === '') resetCollapseTimer();
+      }
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const submitBtn = document.getElementById('submitBtn');
+      const loader = document.querySelector('.loader');
+      const overlay = document.querySelector('.loading-overlay');
+      const userPrompt = promptBox.value.trim();
+
+      if (!userPrompt && !selectedCode) return;
+      
+      try {
+        promptBox.disabled = true;
+        submitBtn.style.display = 'none';
+        appContainer.classList.add('loading');
+        loader.style.display = 'block';
+        overlay.style.display = 'block';
+        
+        let combinedPrompt = "Please provide the code directly without wrapping it in backticks or code blocks. ";
+        combinedPrompt += userPrompt;
+        if (selectedCode) {
+          combinedPrompt += "\n\nCode:\n" + selectedCode;
+        }
+        
+        const response = await window.api.processText(combinedPrompt);
+        
+        await window.api.setClipboard(response);
+        await window.api.focusPreviousWindow();
+        await window.api.simulatePaste();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+      } finally {
+        promptBox.disabled = false;
+        submitBtn.style.display = 'block';
+        appContainer.classList.remove('loading');
+        loader.style.display = 'none';
+        overlay.style.display = 'none';
+        promptBox.value = '';
+        selectedCode = '';
+      }
+    });
+
+    document.getElementById('promptBox').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') document.getElementById('submitBtn').click();
+    });
+
+    // Theme toggle functionality
+    let isDark = true;
+    const themeToggle = document.getElementById('themeToggle');
+    
+    themeToggle.onclick = function(e) {
+      e.stopPropagation();
+      themeToggleClicked = true;
+      clearTimeout(collapseTimeout);  // Clear any pending collapse
+      isDark = !isDark;
+      this.classList.add('switching');
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      this.textContent = isDark ? '🌙' : '☀️';
+      setTimeout(() => {
+        themeToggleClicked = false;
+        this.classList.remove('switching');
+        // Only start collapse timer if we're expanded and input is empty
+        if (appContainer.classList.contains('expanded') && promptBox.value.trim() === '') {
+          resetCollapseTimer();
+        }
+      }, 300);
+    };
+
+    let selectedCode = '';
+
+    function updateSelection() {
+      if (appContainer.classList.contains('expanded')) {
+        window.api.getSelectedText().then(text => {
+          text = text.trim();
+          if (text.includes('\n')) {
+            selectedCode = text;
+            console.log("Code captured:", selectedCode);
+          }
+        }).catch(err => console.error(err));
+      }
+    }
+    
+    document.addEventListener('mouseup', updateSelection);
+    document.addEventListener('keyup', updateSelection);
+
+    // Click-to-expand functionality for non-drag areas in expanded mode.
+    appContainer.addEventListener('click', (e) => {
+      if (e.target.matches('.theme-toggle') || e.target.matches('.input-group *')) return;
+      e.stopPropagation();
+      if (!appContainer.classList.contains('expanded')) {
+        appContainer.classList.add('expanded');
+        setTimeout(() => promptBox.focus(), 400);
+        clearTimeout(collapseTimeout);
+        promptBox.value = '';
+        selectedCode = '';
+      }
+    });
+  </script>
+</body>
+</html>
