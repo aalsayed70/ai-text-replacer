@@ -15,7 +15,6 @@ A minimalist Electron-based desktop application that provides AI-powered text re
 - **Smart Clipboard Integration**: Automatically handles text selection and replacement
 - **Intelligent Window Management**: Tracks window focus history and seamlessly switches between applications
 - **Theme Support**: Light and dark themes with smooth transitions
-- **Cross-Platform**: Works on Linux, Windows, and macOS
 - **Minimalist Design**: Clean, non-intrusive UI that expands when needed
 
 ## Prerequisites
