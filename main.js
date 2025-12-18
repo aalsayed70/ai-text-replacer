@@ -1,8 +1,9 @@
 const { app, BrowserWindow, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
+require('dotenv').config();
 
-const API_KEY = 'xxxxxxxxxxxxxxxxxxxxxxxxxxx';
+const API_KEY = process.env.GEMINI_API_KEY;
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2-flash:generateContent';
 
 app.disableHardwareAcceleration();
@@ -125,6 +126,10 @@ ipcMain.handle('simulate-paste', () => {
 ipcMain.handle('process-text', async (event, prompt) => {
   console.log('Received prompt:', prompt);
   let result;
+  if (!API_KEY) {
+    result = 'Error: missing GEMINI_API_KEY in environment/.env';
+    return result;
+  }
   try {
     const response = await fetch(`${API_URL}?key=${API_KEY}`, {
       method: 'POST',

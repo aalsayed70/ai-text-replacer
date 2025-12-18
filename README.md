@@ -40,9 +40,11 @@ npm install
 ```
 
 3. Configure your API key:
-   - Open `main.js`
-   - Replace `xxxxxxxxxxxxxxxxxxxxxxxxxxx` with your actual Google Gemini API key
-   - Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a `.env` file in the project root:
+     ```bash
+     echo "GEMINI_API_KEY=your_key_here" > .env
+     ```
+   - Get your key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 
 4. Install system dependencies (Linux only):
 ```bash
@@ -146,7 +148,7 @@ ai-text-replacer/
 
 ### Common Issues
 
-1. **API Key Error**: Ensure your Google Gemini API key is correctly set in `main.js`
+1. **API Key Error**: Ensure `GEMINI_API_KEY` is set in your `.env` or environment
 2. **Window Management Issues (Linux)**: Make sure `xdotool` is installed and accessible
 3. **Clipboard Issues**: Check that the app has clipboard permissions
 4. **Theme Not Switching**: Clear browser cache or restart the application
@@ -168,4 +170,3 @@ npm start -- --enable-logging
 ---
 
 **Note**: This application requires an active internet connection to function as it uses Google's cloud-based Gemini API for text processing.
-
